@@ -25,11 +25,20 @@ if (!$WithoutMedia) {
     Copy-Item -LiteralPath $media -Destination (Join-Path $stage 'media/startup.mp4')
     if ((Get-FileHash -LiteralPath $media).Hash -ne (Get-FileHash -LiteralPath (Join-Path $stage 'media/startup.mp4')).Hash) { throw 'Media checksum mismatch.' }
 }
-Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.IO.Compression,System.IO.Compression.FileSystem
 $flavor=if ($WithoutMedia) { '-no-media' } else { '-with-video' }
 $zip=Join-Path $dist ('DragonCodexBoot-'+$version+'-win-x64'+$flavor+'.zip')
 if (Test-Path -LiteralPath $zip) { $zip=Join-Path $dist ('DragonCodexBoot-'+$version+'-win-x64'+$flavor+'-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.zip') }
-[IO.Compression.ZipFile]::CreateFromDirectory($stage,$zip)
+# .NET Framework's CreateFromDirectory can write backslash entry names on Windows.
+# Use explicit POSIX entry paths so .NET Framework, newer .NET and other unzip tools agree.
+$archive=[IO.Compression.ZipFile]::Open($zip,[IO.Compression.ZipArchiveMode]::Create)
+try {
+    $prefix=[IO.Path]::GetFullPath($stage).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+    foreach ($file in Get-ChildItem -LiteralPath $stage -File -Recurse) {
+        $entryName=$file.FullName.Substring($prefix.Length).Replace('\','/')
+        $null=[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$file.FullName,$entryName,[IO.Compression.CompressionLevel]::Optimal)
+    }
+} finally { $archive.Dispose() }
 $sha=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 ($sha+'  '+[IO.Path]::GetFileName($zip)) | Set-Content -LiteralPath ($zip+'.sha256') -Encoding ASCII
 Write-Output $zip

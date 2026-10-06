@@ -24,6 +24,7 @@ $zip=$zips[0]
 $archive=[IO.Compression.ZipFile]::OpenRead($zip.FullName)
 try {
     foreach ($entry in $archive.Entries) {
+        if ($entry.FullName.Contains('\')) { throw ('Non-portable ZIP entry name: '+$entry.FullName) }
         if (($entry.FullName -ne 'media/startup.mp4' -and $entry.FullName -match '\.(mp4|mov|webm|ico|lnk)$') -or $entry.FullName -match '(^|/)(logs|qa|\.integration)/') { throw ('Private asset packaged: '+$entry.FullName) }
         if ($entry.Length -eq 0) { continue }
         $stream=$entry.Open()
