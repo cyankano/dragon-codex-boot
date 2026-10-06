@@ -15,6 +15,8 @@
 | `Volume` | 0–1 音量 |
 | `PlayerWidth` / `PlayerHeight` | 固定播放窗口的物理像素尺寸 |
 | `MatchClientToPlayer` | 是否将真实客户端客户区对齐到播放窗口 |
+| `AutoReplaceEntrypoints` | 首次运行自动替换可识别的启动快捷方式，默认 `true`；启动前设为 `false` 可关闭 |
+| `ScanAllLocalDrives` | 除桌面、开始菜单和快速启动目录外，也扫描本地固定磁盘，默认 `true`；设为 `false` 仅扫描这些常用目录 |
 | `ScreenFrames` | 视频中屏幕区域的矩形关键帧 |
 
 ## 找到本机客户端标识

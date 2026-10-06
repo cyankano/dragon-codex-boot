@@ -18,11 +18,14 @@ using System.Windows.Threading;
 [assembly: AssemblyTitle("Dragon Codex Boot")]
 [assembly: AssemblyProduct("Dragon Codex Boot")]
 [assembly: AssemblyDescription("Community animation launcher for the Codex desktop client")]
-[assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.0")]
+[assembly: AssemblyVersion("0.2.0.0")]
+[assembly: AssemblyFileVersion("0.2.0.0")]
 
 namespace DragonCodexBoot {
  public sealed class Config {
+  public Config() { AutoReplaceEntrypoints=true; ScanAllLocalDrives=true; }
+  public bool AutoReplaceEntrypoints { get; set; }
+  public bool ScanAllLocalDrives { get; set; }
   public string DisplayName { get; set; }
   public string Video { get; set; }
   public string AppLaunch { get; set; }
@@ -335,6 +338,19 @@ namespace DragonCodexBoot {
   }
  }
  public static class Entry {
+  private static int Integrate(string root,string action,bool wait) {
+   string script=Path.Combine(root,"scripts","integrate-entrypoints.ps1");
+   if(!File.Exists(script))throw new FileNotFoundException("启动入口脚本缺失，请完整解压程序包。",script);
+   string powershell=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell","v1.0","powershell.exe");
+   // Paths are local Windows filenames (quotes cannot occur); never concatenate configuration into shell commands.
+   ProcessStartInfo info=new ProcessStartInfo(powershell,"-NoProfile -ExecutionPolicy Bypass -File \""+script+"\" -Action "+action+" -AppRoot \""+root.TrimEnd('\\','/')+"\"") {
+    UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=root,WindowStyle=ProcessWindowStyle.Hidden
+   };
+   using(Process process=Process.Start(info)) {
+    if(wait) { process.WaitForExit();return process.ExitCode; }
+   }
+   return 0;
+  }
   public static Config ReadConfig(string root) {
    Config c=new JavaScriptSerializer().Deserialize<Config>(File.ReadAllText(Path.Combine(root,"launcher.json")));
    ValidateConfig(c);
@@ -405,10 +421,18 @@ namespace DragonCodexBoot {
    try {
     // Headless checks exit before any desktop API or media window is constructed.
     if(args.Contains("--self-test"))return SelfTest(root);
+    if(args.Contains("--restore-entrypoints"))return Integrate(root,"Restore",true);
+    if(args.Contains("--integrate-entrypoints"))return Integrate(root,"Install",true);
     bool owns;using(Mutex mutex=new Mutex(true,"Local\\DragonCodexBoot",out owns)) {
      if(!owns)return 0;
      Config c=ReadConfig(root);
      if(!File.Exists(Path.GetFullPath(Path.Combine(root,c.Video))))throw new Exception("未找到启动视频。请先运行scripts/Import-Animation.ps1导入自己的MP4，或修改launcher.json的Video路径。");
+     if(c.AutoReplaceEntrypoints) {
+      try { Integrate(root,"Auto",false); }
+      catch(Exception e) {
+       try { Directory.CreateDirectory(Path.Combine(root,"logs"));File.AppendAllText(Path.Combine(root,"logs","launcher.log"),"entrypoint-integration: "+e.Message+Environment.NewLine); } catch {}
+      }
+     }
      Application app=new Application();
      app.DispatcherUnhandledException+=delegate(object sender,DispatcherUnhandledExceptionEventArgs e) {
       e.Handled=true;MessageBox.Show("启动器已退出："+e.Exception.Message,"Codex启动");app.Shutdown(1);

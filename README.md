@@ -12,7 +12,7 @@
 4. 把真实客户端客户区对齐到播放窗口，以 Windows DWM 实时缩略图填入动画里的屏幕。
 5. 随着动画屏幕扩大，真实界面逐渐显现；视频结束后撤掉播放窗口，把操作交还给客户端。
 
-支持 `Esc` 跳过、自定义音量、衔接时段、屏幕矩形关键帧，以及可撤销的开始菜单快捷方式。DWM 连接失败时使用淡出交接。
+支持 `Esc` 跳过、自定义音量、衔接时段、屏幕矩形关键帧，以及首次运行时自动替换启动快捷方式。DWM 连接失败时使用淡出交接。
 
 默认配置来自一段约 14 秒、16:9 的动画：11.3 秒等待节点，12.7–13.65 秒交接。这些时间和屏幕坐标必须按自己的视频修改，**不是适用于所有视频的通用模板**。
 
@@ -23,13 +23,31 @@
 - 本地 MP4，建议 H.264 视频与 AAC 音频、16:9。
 - 播放依赖 Windows 自带媒体能力。Windows N 等缺少媒体组件的系统可能无法播放。
 
-不需要 Node、Python、NuGet、API key、视频生成服务或管理员权限。
+播放不需要 Node、Python、NuGet、API key、视频生成服务或管理员权限。修改其他用户或公共目录中的快捷方式可能需要管理员权限；失败会记录到报告，程序不会自行弹出提权请求。
 
 ## 下载版：解压后直接运行
 
 从仓库的 **Releases** 下载 `DragonCodexBoot-版本-win-x64-with-video.zip`，解压到一个长期保留的位置，然后双击 **DragonCodexBoot.exe**。
 
 程序包已经包含 `media/startup.mp4` 与匹配这段动画的配置。已安装 Codex 且客户端标识与示例一致时，即可播放动画并接入客户端；标识不一致时参考 [配置说明](docs/CONFIGURATION.md) 更新 `AppLaunch`。
+
+### 默认自动替换启动入口
+
+**首次运行会自动替换指向配置中官方客户端的 `.lnk` 快捷方式。** 下载文件本身不会改变电脑。
+
+- 先检查桌面、开始菜单程序目录、公共桌面、公共开始菜单，以及任务栏/快速启动的快捷方式目录。
+- 默认继续查找所有本地固定磁盘上的可访问快捷方式，后台运行，最多扫描 5 分钟。跳过 Windows、回收站、链接目录、运行时/缓存目录和启动器自身目录。
+- 用实际目标、精确的 AppsFolder 应用 ID 或已安装应用包的可执行文件匹配；同名的其他程序、网页链接不改。
+- 已有快捷方式的名称和图标保留，目标改为动画启动器。当前用户桌面和开始菜单缺少对应入口时，补建一个使用已安装客户端名称和本机图标的入口。
+- 每个改动先备份原始文件、记录 SHA-256，再替换并复核。扫描结果在 `.integration/report.json`；下次启动不会重复扫描。
+
+解压目录必须长期保留，替换后的快捷方式会指向该目录。**删除或搬走程序前，先双击 `Restore-Original-Entrypoints.cmd` 恢复。** 它只恢复仍与安装记录相符的快捷方式；后来被你修改或删除的入口会保留。恢复后再次播放动画不会自动重新替换。
+
+新增了快捷方式，或希望重试权限不足的公共目录时，双击 `Rescan-Entrypoints.cmd`。必要时右键这个文件选择以管理员身份运行。
+
+**覆盖范围：可识别且可写的启动快捷方式。** MSIX 注册的“所有应用”/搜索结果、原有开始菜单固定项、直接运行官方 exe、协议链接及第三方程序内部调用不由 `.lnk` 替换统一控制。任务栏可能缓存旧启动信息，需要取消固定后重新固定修改过的入口。程序报告分别显示这些限制，不能把文件替换成功当成“全机所有入口已接管”。
+
+如果不希望修改任何入口，在首次启动前把 `launcher.json` 中的 `AutoReplaceEntrypoints` 改为 `false`。详见 [入口替换和恢复](docs/ENTRYPOINTS.md)。
 
 ### 换成自己的动画
 
@@ -46,19 +64,23 @@
 
 ### 固定到开始菜单
 
+首次运行已经创建或替换可识别的开始菜单快捷方式。对于 Windows 原先固定的官方应用，取消原固定项，再固定下载目录中的 `DragonCodexBoot.exe` 或已修改的快捷方式。
+
+如果希望额外创建一个社区名称的独立入口，可使用原有脚本：
+
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-start-menu.ps1
 ```
 
-随后在资源管理器中右键 `DragonCodexBoot.exe`，选择 **固定到“开始”**。以后从这个入口启动。
+随后在资源管理器中右键 `DragonCodexBoot.exe`，选择 **固定到“开始”**。
 
-恢复：先在开始菜单取消这个入口的固定，再执行：
+只恢复这个额外的社区名称入口：先在开始菜单取消其固定，再执行：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-start-menu.ps1 -Action Restore
 ```
 
-安装脚本只创建当前用户的 `Dragon Codex Boot.lnk`，会校验和备份同名快捷方式。它不会改写官方程序、替换应用包或注册后台监听。
+这段兼容脚本只管理 `Dragon Codex Boot.lnk`。恢复首次运行的批量替换请使用 `Restore-Original-Entrypoints.cmd`。
 
 ## 从源码构建
 
@@ -102,7 +124,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package.ps1
 - `MatchClientToPlayer: true` 会恢复并移动、调整真实客户端窗口，结束后保留该位置和尺寸。
 - 动画里的生成式界面和真实界面可能不同；最好让最后屏幕的比例、配色、结构接近真实软件。
 - DWM 缩略图在过渡阶段只显示实时画面，交接完成后才能操作真实客户端。
-- 不提供开机自启、官方入口拦截或持续后台服务。
+- 默认入口替换受权限、扫描范围和时间预算限制。开始菜单/任务栏的固定缓存不等同于目录里的 `.lnk`。
+- 不改写官方应用包，不安装持续监听服务，也不设置开机自启。
 
 ## 项目结构
 
@@ -110,7 +133,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package.ps1
 src/                         C# WPF 启动器与 DPI 清单
 config/launcher.example.json 公开配置模板
 scripts/                     构建、导入、测试、快捷方式和打包
-tests/                       配置拒绝、插值和几何定位测试
+tests/                       配置、几何定位及隔离快捷方式恢复测试
 docs/                        配置、发布与手动验收
 .github/workflows/           Windows 构建及程序包检查
 ```

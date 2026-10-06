@@ -11,4 +11,5 @@ $argsList=@('/nologo','/target:exe','/platform:x64',('/out:'+(Join-Path $outputR
 if ($LASTEXITCODE -ne 0) { throw 'Test harness compilation failed.' }
 & (Join-Path $outputRoot 'GeometryTests.exe') (Join-Path $repoRoot 'config/launcher.example.json')
 if ($LASTEXITCODE -ne 0) { throw 'Geometry or configuration tests failed.' }
+& (Join-Path $repoRoot 'tests/EntrypointTests.ps1')
 Get-Content -LiteralPath (Join-Path $outputRoot 'qa/self-test.json') -Raw

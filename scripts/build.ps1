@@ -36,4 +36,11 @@ if ((Test-Path -LiteralPath $demoVideo) -and !(Test-Path -LiteralPath $outputVid
     Copy-Item -LiteralPath $demoVideo -Destination $outputVideo
     if ((Get-FileHash -LiteralPath $demoVideo).Hash -ne (Get-FileHash -LiteralPath $outputVideo).Hash) { throw 'Bundled video copy mismatch.' }
 }
+New-Item -ItemType Directory -Path (Join-Path $outputRoot 'scripts') -Force | Out-Null
+foreach ($name in @('integrate-entrypoints.ps1','Import-Animation.ps1','install-start-menu.ps1')) {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $outputRoot 'scripts') -Force
+}
+foreach ($name in @('Restore-Original-Entrypoints.cmd','Rescan-Entrypoints.cmd')) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot $name) -Destination $outputRoot -Force
+}
 Write-Output ('Built: ' + (Join-Path $outputRoot 'DragonCodexBoot.exe'))

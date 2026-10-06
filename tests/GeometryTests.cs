@@ -15,6 +15,11 @@ internal static class GeometryTests {
  public static int Main(string[] args) {
   try {
    Config c=new JavaScriptSerializer().Deserialize<Config>(File.ReadAllText(args[0]));Entry.ValidateConfig(c);
+   Check(c.AutoReplaceEntrypoints&&c.ScanAllLocalDrives,"Public defaults enable first-run integration");
+   Check(new Config().AutoReplaceEntrypoints&&new Config().ScanAllLocalDrives,"Missing legacy settings have enabled defaults");
+   string legacy=File.ReadAllText(args[0]).Replace("\"AutoReplaceEntrypoints\": true,","").Replace("\"ScanAllLocalDrives\": true,","");
+   Check(new JavaScriptSerializer().Deserialize<Config>(legacy).AutoReplaceEntrypoints,"Legacy JSON retains default");
+   Check(!new JavaScriptSerializer().Deserialize<Config>("{\"AutoReplaceEntrypoints\":false}").AutoReplaceEntrypoints,"Explicit opt-out is retained");
    Check(Geometry.At(c.ScreenFrames,-1)==c.ScreenFrames[0],"First frame clamp");
    Check(Geometry.At(c.ScreenFrames,999)==c.ScreenFrames[c.ScreenFrames.Count-1],"Last frame clamp");
    double mid=(c.ScreenFrames[0].Time+c.ScreenFrames[1].Time)/2;
