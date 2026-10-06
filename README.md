@@ -2,7 +2,7 @@
 
 给 Windows 版 Codex 桌面客户端播放自定义启动动画，并把动画结尾自然交接到真实、可操作的软件窗口。
 
-**社区独立项目，与 OpenAI 无隶属关系。** 源码使用 MIT 许可证。仓库包含启动器和工具脚本；默认不附带龙娘视频、角色图或官方图标。用户导入自己的 MP4 即可使用。
+**社区独立项目，与 OpenAI 无隶属关系。** 源码使用 MIT 许可证。仓库与默认程序包包含一段完整的 1080p 龙娘启动动画，解压即可播放，也支持换成自己的 MP4。视频许可说明见 [随附媒体说明](media/MEDIA_NOTICE.md)。
 
 ## 它做什么
 
@@ -25,9 +25,13 @@
 
 不需要 Node、Python、NuGet、API key、视频生成服务或管理员权限。
 
-## 下载版：三步使用
+## 下载版：解压后直接运行
 
-从仓库的 **Releases** 下载 `DragonCodexBoot-版本-win-x64.zip`，解压到一个长期保留的位置。
+从仓库的 **Releases** 下载 `DragonCodexBoot-版本-win-x64-with-video.zip`，解压到一个长期保留的位置，然后双击 **DragonCodexBoot.exe**。
+
+程序包已经包含 `media/startup.mp4` 与匹配这段动画的配置。已安装 Codex 且客户端标识与示例一致时，即可播放动画并接入客户端；标识不一致时参考 [配置说明](docs/CONFIGURATION.md) 更新 `AppLaunch`。
+
+### 换成自己的动画
 
 1. 在该目录打开 PowerShell，将自己的视频导入：
 
@@ -72,13 +76,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Import-Animation.ps1 -VideoPath "D:\Animations\startup.mp4"
 ```
 
-制作不含视频的可分发程序包：
+制作包含随附演示视频的可分发程序包：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package.ps1
 ```
 
-包和 SHA-256 文件写入 `dist/`。默认使用干净的公开配置模板，避免把本机配置和路径带入发布包。只有显式使用 `-IncludeMedia` 才打包已导入视频；分享前应确认该视频及其音乐、角色素材的再分发许可。
+包和 SHA-256 文件写入 `dist/`。默认使用公开配置模板与仓库中的 `media/startup.mp4`，不会自动把后来导入到本机 build 目录的个人视频打包进去。可加 `-WithoutMedia` 生成不含视频的程序包。
 
 ### 自定义名称与图标
 

@@ -1,12 +1,12 @@
 /build/
 /dist/
 /.local/
-/media/
 **/logs/
 **/qa/
 **/.integration/
 launcher.json
 *.mp4
+!/media/startup.mp4
 *.mov
 *.webm
 *.ico

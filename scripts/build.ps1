@@ -29,4 +29,11 @@ $configPath = Join-Path $outputRoot 'launcher.json'
 if (!(Test-Path -LiteralPath $configPath)) {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'config/launcher.example.json') -Destination $configPath
 }
+$demoVideo = Join-Path $repoRoot 'media/startup.mp4'
+$outputVideo = Join-Path $outputRoot 'media/startup.mp4'
+if ((Test-Path -LiteralPath $demoVideo) -and !(Test-Path -LiteralPath $outputVideo)) {
+    New-Item -ItemType Directory -Path (Split-Path -Parent $outputVideo) -Force | Out-Null
+    Copy-Item -LiteralPath $demoVideo -Destination $outputVideo
+    if ((Get-FileHash -LiteralPath $demoVideo).Hash -ne (Get-FileHash -LiteralPath $outputVideo).Hash) { throw 'Bundled video copy mismatch.' }
+}
 Write-Output ('Built: ' + (Join-Path $outputRoot 'DragonCodexBoot.exe'))

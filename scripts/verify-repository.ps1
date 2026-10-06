@@ -3,7 +3,11 @@ $repoRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $files=@(& git -c core.quotePath=false -C $repoRoot ls-files)
 if ($LASTEXITCODE -ne 0 -or $files.Count -eq 0) { throw 'No tracked repository files. Initialize and stage the clean source first.' }
 foreach ($name in $files) {
-    if ($name -match '(^|/)(build|dist|\.local|logs|qa|media|\.integration)/' -or $name -match '\.(mp4|mov|webm|ico|lnk|exe|dll|pdb|zip|pem|key)$') {
+    if ($name -eq 'media/startup.mp4') {
+        if ((Get-Item -LiteralPath (Join-Path $repoRoot $name)).Length -ge 100MB) { throw 'Demo video exceeds the regular Git file limit.' }
+        continue
+    }
+    if ($name -match '(^|/)(build|dist|\.local|logs|qa|\.integration)/' -or $name -match '\.(mp4|mov|webm|ico|lnk|exe|dll|pdb|zip|pem|key)$') {
         throw ('Private/generated asset tracked: '+$name)
     }
     $text=Get-Content -LiteralPath (Join-Path $repoRoot $name) -Encoding UTF8 -Raw
@@ -20,7 +24,7 @@ $zip=$zips[0]
 $archive=[IO.Compression.ZipFile]::OpenRead($zip.FullName)
 try {
     foreach ($entry in $archive.Entries) {
-        if ($entry.FullName -match '\.(mp4|mov|webm|ico|lnk)$' -or $entry.FullName -match '(^|/)(logs|qa|\.integration)/') { throw ('Private asset packaged: '+$entry.FullName) }
+        if (($entry.FullName -ne 'media/startup.mp4' -and $entry.FullName -match '\.(mp4|mov|webm|ico|lnk)$') -or $entry.FullName -match '(^|/)(logs|qa|\.integration)/') { throw ('Private asset packaged: '+$entry.FullName) }
         if ($entry.Length -eq 0) { continue }
         $stream=$entry.Open()
         try { $null=Get-FileHash -InputStream $stream -Algorithm SHA256 } finally { $stream.Dispose() }
@@ -35,7 +39,14 @@ try {
     $stream=$exeEntry.Open()
     try { $exeHash=(Get-FileHash -InputStream $stream).Hash } finally { $stream.Dispose() }
     if ($exeHash -ne (Get-FileHash -LiteralPath (Join-Path $repoRoot 'build/DragonCodexBoot/DragonCodexBoot.exe')).Hash) { throw 'Packaged binary hash mismatch.' }
+    if ($zip.Name -notmatch '-no-media') {
+        $videoEntry=$archive.GetEntry('media/startup.mp4')
+        if (!$videoEntry -or !$archive.GetEntry('media/MEDIA_NOTICE.md')) { throw 'Bundled demo video or notice missing.' }
+        $stream=$videoEntry.Open()
+        try { $videoHash=(Get-FileHash -InputStream $stream).Hash } finally { $stream.Dispose() }
+        if ($videoHash -ne (Get-FileHash -LiteralPath (Join-Path $repoRoot 'media/startup.mp4')).Hash) { throw 'Packaged video hash mismatch.' }
+    }
 } finally { $archive.Dispose() }
 $expected=(Get-Content -LiteralPath ($zip.FullName+'.sha256') -Raw).Trim().Split(' ')[0]
 if ($expected -ine (Get-FileHash -LiteralPath $zip.FullName).Hash) { throw 'Archive hash mismatch.' }
-Write-Output ('PASS: '+$files.Count+' tracked source files; media, private paths and credential markers excluded; package entries and hashes checked.')
+Write-Output ('PASS: '+$files.Count+' tracked files; only the approved demo video included; private paths and credential markers excluded; package entries and hashes checked.')

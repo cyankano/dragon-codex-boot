@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$IncludeMedia)
+param([switch]$WithoutMedia)
 $ErrorActionPreference='Stop'
 $repoRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $appRoot=Join-Path $repoRoot 'build/DragonCodexBoot'
@@ -16,16 +16,19 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'config/launcher.example.json') -Des
 foreach ($name in @('LICENSE','README.md','CONTRIBUTING.md','THIRD_PARTY_NOTICES.md','VERSION')) { Copy-Item -LiteralPath (Join-Path $repoRoot $name) -Destination $stage }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination $stage -Recurse
 foreach ($name in @('Import-Animation.ps1','install-start-menu.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $stage 'scripts') }
-if ($IncludeMedia) {
-    $media=Join-Path $appRoot 'media/startup.mp4'
-    if (!(Test-Path -LiteralPath $media)) { throw 'No imported startup.mp4 exists.' }
+New-Item -ItemType Directory -Path (Join-Path $stage 'media') -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'media/MEDIA_NOTICE.md') -Destination (Join-Path $stage 'media/MEDIA_NOTICE.md')
+if (!$WithoutMedia) {
+    $media=Join-Path $repoRoot 'media/startup.mp4'
+    if (!(Test-Path -LiteralPath $media)) { throw 'The bundled demo video is missing.' }
     New-Item -ItemType Directory -Path (Join-Path $stage 'media') -Force | Out-Null
     Copy-Item -LiteralPath $media -Destination (Join-Path $stage 'media/startup.mp4')
     if ((Get-FileHash -LiteralPath $media).Hash -ne (Get-FileHash -LiteralPath (Join-Path $stage 'media/startup.mp4')).Hash) { throw 'Media checksum mismatch.' }
 }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip=Join-Path $dist ('DragonCodexBoot-'+$version+'-win-x64.zip')
-if (Test-Path -LiteralPath $zip) { $zip=Join-Path $dist ('DragonCodexBoot-'+$version+'-win-x64-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.zip') }
+$flavor=if ($WithoutMedia) { '-no-media' } else { '-with-video' }
+$zip=Join-Path $dist ('DragonCodexBoot-'+$version+'-win-x64'+$flavor+'.zip')
+if (Test-Path -LiteralPath $zip) { $zip=Join-Path $dist ('DragonCodexBoot-'+$version+'-win-x64'+$flavor+'-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.zip') }
 [IO.Compression.ZipFile]::CreateFromDirectory($stage,$zip)
 $sha=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 ($sha+'  '+[IO.Path]::GetFileName($zip)) | Set-Content -LiteralPath ($zip+'.sha256') -Encoding ASCII

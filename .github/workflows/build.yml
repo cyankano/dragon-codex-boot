@@ -18,7 +18,7 @@ jobs:
       - name: Build and run headless tests
         shell: powershell
         run: ./scripts/test.ps1
-      - name: Package without private media
+      - name: Package with bundled demo video
         shell: powershell
         run: ./scripts/package.ps1
       - name: Check repository and package
